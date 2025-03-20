@@ -47,11 +47,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { useAllMaintenance } from '@/lib/db'
+import { useAllMaintenance, useDatabase } from '@/lib/db'
 
 export default function MaintenancePage() {
   const { toast } = useToast()
   const maintenance = useAllMaintenance()
+  const { database } = useDatabase()
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState([])
@@ -72,7 +73,7 @@ export default function MaintenancePage() {
         return (
           item.vehicleId.toLowerCase().includes(query) ||
           item.maintenanceType.toLowerCase().includes(query) ||
-          item.serviceLocation.toLowerCase().includes(query)
+          item.serviceLocation?.toLowerCase().includes(query)
         )
       }
       return true
@@ -168,13 +169,7 @@ export default function MaintenancePage() {
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
       // Update the maintenance item in the local state
-      const updatedMaintenance = maintenance.map((item) =>
-        item.id === editedMaintenance.id
-          ? { ...editedMaintenance, status: 'completed', completedDate: new Date().toISOString() }
-          : item
-      )
-
-      setMaintenance(updatedMaintenance)
+      await database.put({ ...selectedMaintenance, status: 'completed' })
       setIsModalOpen(false)
 
       toast({
@@ -200,12 +195,8 @@ export default function MaintenancePage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Update the maintenance item in the local state
-      const updatedMaintenance = maintenance.map((item) =>
-        item.id === editedMaintenance.id ? editedMaintenance : item
-      )
-
-      setMaintenance(updatedMaintenance)
+      // Update the maintenance item in the database
+      await database.put({ ...editedMaintenance })
       setIsModalOpen(false)
 
       toast({
@@ -462,6 +453,7 @@ export default function MaintenancePage() {
                   value={editedMaintenance.maintenanceType}
                   onChange={handleInputChange}
                   className="col-span-3"
+                  required
                 />
               </div>
 
@@ -488,6 +480,7 @@ export default function MaintenancePage() {
                   value={editedMaintenance.dueDate}
                   onChange={handleInputChange}
                   className="col-span-3"
+                  required
                 />
               </div>
 
@@ -500,6 +493,7 @@ export default function MaintenancePage() {
                   value={editedMaintenance.serviceLocation}
                   onChange={handleInputChange}
                   className="col-span-3"
+                  required
                 />
               </div>
 

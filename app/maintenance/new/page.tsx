@@ -191,7 +191,7 @@ export default function NewMaintenancePage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="location">Due Date*</Label>
+                  <Label htmlFor="location">Location*</Label>
                   <Input
                     id="serviceLocation"
                     type="text"

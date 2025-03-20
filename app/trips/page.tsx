@@ -47,11 +47,12 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
-import { useAllTrips } from '@/lib/db'
+import { useAllTrips, useDatabase } from '@/lib/db'
 
 export default function TripsPage() {
   const { toast } = useToast()
   const trips = useAllTrips()
+  const { database } = useDatabase()
   const [isLoading, setIsLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState([])
@@ -72,7 +73,6 @@ export default function TripsPage() {
         return (
           trip.tripName.toLowerCase().includes(query) ||
           trip.vehicleId.toLowerCase().includes(query) ||
-          trip.driverId.toLowerCase().includes(query) ||
           trip.destination.toLowerCase().includes(query)
         )
       }
@@ -167,14 +167,8 @@ export default function TripsPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Update the trip item in the local state
-      const updatedTrips = trips.map((item) =>
-        item.id === editedTrip.id
-          ? { ...editedTrip, status: 'completed', completedDate: new Date().toISOString() }
-          : item
-      )
-
-      setTrips(updatedTrips)
+      // Update the trip item in the database
+      await database.put({ ...selectedTrip, status: 'completed' })
       setIsModalOpen(false)
 
       toast({
@@ -200,14 +194,12 @@ export default function TripsPage() {
       // Simulate API call
       await new Promise((resolve) => setTimeout(resolve, 1000))
 
-      // Update the trip item in the local state
-      const updatedTrips = trips.map((item) =>
-        item.id === editedTrip.id
-          ? { ...editedTrip, status: 'in-progress', startedDate: new Date().toISOString() }
-          : item
-      )
-
-      setTrips(updatedTrips)
+      // Update the trip item in the database
+      await database.put({
+        ...editedTrip,
+        status: 'in-progress',
+        startedDate: new Date().toISOString(),
+      })
       setIsModalOpen(false)
 
       toast({
@@ -230,15 +222,9 @@ export default function TripsPage() {
   const handleSaveChanges = async () => {
     setIsSubmitting(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-
-      // Update the trip item in the local state
-      const updatedTrips = trips.map((item) => (item.id === editedTrip.id ? editedTrip : item))
-
-      setTrips(updatedTrips)
+      // Update the trip item in the database
+      await database.put({ ...editedTrip })
       setIsModalOpen(false)
-
       toast({
         title: 'Changes saved',
         description: 'The trip has been updated successfully.',
@@ -428,10 +414,6 @@ export default function TripsPage() {
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Vehicle:</span>
                       <span>{trip.vehicleId}</span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-muted-foreground">Driver:</span>
-                      <span>{trip.driverId}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-muted-foreground">Date:</span>

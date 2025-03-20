@@ -12,7 +12,6 @@ export interface Vehicle {
   licensePlate: string
   fuelType: string
   purchaseDate: string
-  purchasePrice: number
   currentMileage?: number
   status: 'active' | 'in-maintenance' | 'out-of-service'
   maintenance?: Maintenance[]
@@ -62,7 +61,7 @@ export function useVehicles() {
 
 export function useVehicle(id: string) {
   const { useDocument } = useDatabase()
-  return useDocument({ _id: id }).doc
+  return useDocument({ _id: id }).doc as Vehicle
 }
 
 // Hooks for maintenance

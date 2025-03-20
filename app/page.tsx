@@ -257,7 +257,7 @@ export default function Dashboard() {
                       .slice(0, 3)
                       .map((trip: Trip, index: number) => {
                         const tripStatus = getTripStatus(trip)
-                        const vehicle = vehicles?.find((v: Vehicle) => v._id === trip.vehicleId)
+                        const vehicle = vehicles?.find((v: Vehicle) => v._id === trip.vehicle_id)
 
                         return (
                           <Card key={trip._id || index}>
@@ -282,10 +282,6 @@ export default function Dashboard() {
                             </CardHeader>
                             <CardContent>
                               <div className="flex items-center gap-4 text-sm">
-                                <div className="flex items-center gap-1">
-                                  <Users className="h-4 w-4 text-muted-foreground" />
-                                  <span>{trip.driverId}</span>
-                                </div>
                                 <div className="flex items-center gap-1">
                                   <Clock className="h-4 w-4 text-muted-foreground" />
                                   <span>{trip.startTime}</span>
@@ -343,7 +339,7 @@ export default function Dashboard() {
                       .slice(0, 3)
                       .map((item: Maintenance, index: number) => {
                         const status = getMaintenanceStatus(item)
-                        const vehicle = vehicles?.find((v: Vehicle) => v._id === item.vehicleId)
+                        const vehicle = vehicles?.find((v: Vehicle) => v._id === item.vehicle_id)
 
                         return (
                           <Card key={item._id || index}>

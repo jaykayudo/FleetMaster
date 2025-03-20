@@ -2,7 +2,6 @@
 
 FleetMaster is a comprehensive fleet management application designed to help businesses efficiently manage their vehicles, maintenance schedules, and trips. Built with Next.js and React, it provides a responsive and intuitive interface for tracking all aspects of your fleet operations.
 
-
 ## Key Features
 
 - **Vehicle Management**: Track vehicle details, status, maintenance history, and current location
@@ -45,14 +44,13 @@ FleetMaster uses **use-fireproof** for data storage, providing several key advan
    cd fleet-management
    ```
 2. Install the dependencies
-    ```bash
-    npm install --force
-    ```
+   ```bash
+   npm install --force
+   ```
 3. Start the application
-    ```bash
-    npm run dev
-    ```
 
-4. Navigate to  `http://localhost:3000`
+   ```bash
+   npm run dev
+   ```
 
-
+4. Navigate to `http://localhost:3000`

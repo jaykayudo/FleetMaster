@@ -1,5 +1,7 @@
 'use client'
 
+import type React from 'react'
+
 import Link from 'next/link'
 import {
   CalendarClock,
@@ -28,27 +30,148 @@ import {
 } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useEffect, useState } from 'react'
 import {
-  useDatabase,
+  useVehicle,
   useMaintenanceByVehicle,
   useTripsByVehicle,
-  useVehicle,
   getMaintenanceStatus,
   getTripStatus,
+  useDatabase,
 } from '@/lib/db'
+import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Textarea } from '@/components/ui/textarea'
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { useState } from 'react'
+import type { Maintenance, Vehicle } from '@/lib/types'
+import { useToast } from '@/components/ui/use-toast'
 
 export default function VehicleDetailPage() {
   const params = useParams()
   const vehicleId = params.id as string
   const { database } = useDatabase()
+  const { toast } = useToast()
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isRescheduleModalOpen, setIsRescheduleModalOpen] = useState(false)
+  const [selectedMaintenance, setSelectedMaintenance] = useState<Maintenance | null>(null)
+  const [editedVehicle, setEditedVehicle] = useState<Vehicle | null>(null)
+  const [newDueDate, setNewDueDate] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
   const vehicle = useVehicle(vehicleId)
   const maintenanceItems = useMaintenanceByVehicle(vehicleId)
   const trips = useTripsByVehicle(vehicleId)
   const [isLoadingVehicle, setIsLoadingVehicle] = useState(false)
   const [isLoadingMaintenance, setIsLoadingMaintenance] = useState(false)
   const [isLoadingTrips, setIsLoadingTrips] = useState(false)
+
+  const handleCompleteMaintenance = async (maintenance) => {
+    try {
+      await database.put({
+        ...maintenance,
+        status: 'completed',
+        completedDate: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error('Error completing maintenance:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to complete maintenance. Please try again.',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleOpenEditModal = () => {
+    if (vehicle) {
+      setEditedVehicle({ ...vehicle })
+      setIsEditModalOpen(true)
+    }
+  }
+
+  const handleSaveVehicle = async () => {
+    if (!editedVehicle) return
+
+    setIsSubmitting(true)
+    try {
+      await database.put(editedVehicle)
+      setIsEditModalOpen(false)
+      toast({
+        title: 'Vehicle edited',
+        description: 'The vehicle data has been edited successfully.',
+      })
+    } catch (error) {
+      console.error('Error updating vehicle:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to edit vehicle. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { id, value } = e.target
+    if (editedVehicle) {
+      setEditedVehicle({
+        ...editedVehicle,
+        [id]: ['year', 'currentMileage'].includes(id) ? Number(value) : value,
+      })
+    }
+  }
+
+  const handleStatusChange = (value: string) => {
+    if (editedVehicle) {
+      setEditedVehicle({
+        ...editedVehicle,
+        status: value as 'active' | 'in-maintenance' | 'out-of-service',
+      })
+    }
+  }
+
+  const handleOpenRescheduleModal = (maintenance: Maintenance) => {
+    setSelectedMaintenance(maintenance)
+    setNewDueDate(maintenance.dueDate)
+    setIsRescheduleModalOpen(true)
+  }
+
+  const handleRescheduleMaintenance = async () => {
+    if (!selectedMaintenance || !newDueDate) return
+
+    setIsSubmitting(true)
+    try {
+      await database.put({
+        ...selectedMaintenance,
+        dueDate: newDueDate,
+      })
+      setIsRescheduleModalOpen(false)
+      toast({
+        title: 'Maintenance rescheduled',
+        description: 'The maintenance has been rescheduled successfully.',
+      })
+    } catch (error) {
+      console.error('Error rescheduling maintenance:', error)
+      toast({
+        title: 'Error',
+        description: 'Failed to reschedule maintenance. Please try again.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
   if (isLoadingVehicle) {
     return (
@@ -154,7 +277,7 @@ export default function VehicleDetailPage() {
           </Link>
         </nav>
         <div className="ml-auto flex items-center gap-4">
-          <Button variant="outline" size="sm" className="h-8 gap-1">
+          <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleOpenEditModal}>
             <Edit className="h-3.5 w-3.5" />
             <span>Edit Vehicle</span>
           </Button>
@@ -204,6 +327,12 @@ export default function VehicleDetailPage() {
                 <span>Schedule Maintenance</span>
               </Button>
             </Link>
+            <Link href="/trips/new">
+              <Button variant="outline" size="sm" className="h-9 gap-1">
+                <Route className="h-4 w-4" />
+                <span>Schedule Trip</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
@@ -214,8 +343,8 @@ export default function VehicleDetailPage() {
             </CardHeader>
             <CardContent className="grid gap-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div className="font-medium text-muted-foreground">Vehicle Id</div>
-                <div>{vehicle.vehicleId}</div>
+                <div className="font-medium text-muted-foreground">Make</div>
+                <div>{vehicle.make}</div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="font-medium text-muted-foreground">Model</div>
@@ -225,6 +354,7 @@ export default function VehicleDetailPage() {
                 <div className="font-medium text-muted-foreground">Year</div>
                 <div>{vehicle.year}</div>
               </div>
+
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div className="font-medium text-muted-foreground">License Plate</div>
                 <div>{vehicle.licensePlate}</div>
@@ -246,10 +376,9 @@ export default function VehicleDetailPage() {
 
           <div className="md:col-span-2">
             <Tabs defaultValue="maintenance">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
                 <TabsTrigger value="trips">Trips</TabsTrigger>
-                <TabsTrigger value="history">History</TabsTrigger>
               </TabsList>
               <TabsContent value="maintenance" className="mt-4">
                 <Card>
@@ -311,23 +440,7 @@ export default function VehicleDetailPage() {
                                 <div className="mt-1 text-sm text-muted-foreground">
                                   Due: {new Date(item.dueDate).toLocaleDateString()}
                                 </div>
-                                <div className="mt-2 flex items-center gap-2 text-sm">
-                                  <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                                  <span>
-                                    {item.recurrencePattern !== 'none' ? (
-                                      <>
-                                        {item.recurrencePattern === 'mileage' &&
-                                          `Every ${item.mileageInterval} miles`}
-                                        {item.recurrencePattern === 'time' &&
-                                          `Every ${item.timeInterval}`}
-                                        {item.recurrencePattern === 'both' &&
-                                          `Every ${item.mileageInterval} miles or ${item.timeInterval}`}
-                                      </>
-                                    ) : (
-                                      'One-time maintenance'
-                                    )}
-                                  </span>
-                                </div>
+
                                 <div className="mt-3 flex items-center gap-2">
                                   <Button
                                     size="sm"
@@ -336,7 +449,11 @@ export default function VehicleDetailPage() {
                                   >
                                     Complete
                                   </Button>
-                                  <Button size="sm" variant="outline">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleOpenRescheduleModal(item)}
+                                  >
                                     Reschedule
                                   </Button>
                                 </div>
@@ -423,7 +540,6 @@ export default function VehicleDetailPage() {
                                   {new Date(trip.startDate).toLocaleDateString()} • {trip.startTime}{' '}
                                   - {trip.endTime}
                                 </div>
-
                                 <div className="mt-2 flex items-center gap-2 text-sm">
                                   <MapPin className="h-4 w-4 text-muted-foreground" />
                                   <span>{trip.destination}</span>
@@ -459,88 +575,149 @@ export default function VehicleDetailPage() {
                   </CardFooter>
                 </Card>
               </TabsContent>
-              <TabsContent value="history" className="mt-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Vehicle History</CardTitle>
-                    <CardDescription>Past maintenance and trips</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="mb-2 font-medium">March 2025</h3>
-                        <div className="space-y-2">
-                          <div className="flex items-start gap-2 rounded-lg border p-3">
-                            <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">Fuel Refill</div>
-                                <div className="text-sm text-muted-foreground">Mar 12, 2025</div>
-                              </div>
-                              <div className="mt-1 text-sm">35.2 gallons • $140.80</div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2 rounded-lg border p-3">
-                            <Route className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">Trip to Indianapolis</div>
-                                <div className="text-sm text-muted-foreground">Mar 10, 2025</div>
-                              </div>
-                              <div className="mt-1 text-sm">Driver: John Smith • 180 miles</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <Separator />
-                      <div>
-                        <h3 className="mb-2 font-medium">February 2025</h3>
-                        <div className="space-y-2">
-                          <div className="flex items-start gap-2 rounded-lg border p-3">
-                            <Settings className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">Oil Change</div>
-                                <div className="text-sm text-muted-foreground">Feb 10, 2025</div>
-                              </div>
-                              <div className="mt-1 text-sm">Performed at 42,500 miles • $65.00</div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2 rounded-lg border p-3">
-                            <Route className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">Trip to Detroit</div>
-                                <div className="text-sm text-muted-foreground">Feb 5, 2025</div>
-                              </div>
-                              <div className="mt-1 text-sm">Driver: Sarah Johnson • 280 miles</div>
-                            </div>
-                          </div>
-                          <div className="flex items-start gap-2 rounded-lg border p-3">
-                            <Clock className="mt-0.5 h-4 w-4 text-muted-foreground" />
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <div className="font-medium">Fuel Refill</div>
-                                <div className="text-sm text-muted-foreground">Feb 2, 2025</div>
-                              </div>
-                              <div className="mt-1 text-sm">32.8 gallons • $131.20</div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" className="w-full">
-                      View Complete History
-                    </Button>
-                  </CardFooter>
-                </Card>
-              </TabsContent>
             </Tabs>
           </div>
         </div>
       </main>
+      {/* Edit Vehicle Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={setIsEditModalOpen}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Edit Vehicle</DialogTitle>
+            <DialogDescription>Make changes to the vehicle information.</DialogDescription>
+          </DialogHeader>
+
+          {editedVehicle && (
+            <div className="grid gap-4 py-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="vehicleId">Vehicle ID</Label>
+                  <Input
+                    id="vehicleId"
+                    value={editedVehicle.vehicleId}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="status">Status</Label>
+                  <RadioGroup value={editedVehicle.status} onValueChange={handleStatusChange}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="active" id="active" />
+                      <Label htmlFor="active">Active</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="in-maintenance" id="in-maintenance" />
+                      <Label htmlFor="in-maintenance">In Maintenance</Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="out-of-service" id="out-of-service" />
+                      <Label htmlFor="out-of-service">Out of Service</Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="make">Make</Label>
+                  <Input id="make" value={editedVehicle.make} onChange={handleInputChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="model">Model</Label>
+                  <Input id="model" value={editedVehicle.model} onChange={handleInputChange} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="year">Year</Label>
+                  <Input
+                    id="year"
+                    type="number"
+                    value={editedVehicle.year}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="licensePlate">License Plate</Label>
+                  <Input
+                    id="licensePlate"
+                    value={editedVehicle.licensePlate}
+                    onChange={handleInputChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="fuelType">Fuel Type</Label>
+                  <Input
+                    id="fuelType"
+                    value={editedVehicle.fuelType}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="currentMileage">Current Mileage</Label>
+                  <Input
+                    id="currentMileage"
+                    type="number"
+                    value={editedVehicle.currentMileage}
+                    onChange={handleInputChange}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditModalOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSaveVehicle} disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Reschedule Maintenance Modal */}
+      <Dialog open={isRescheduleModalOpen} onOpenChange={setIsRescheduleModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Reschedule Maintenance</DialogTitle>
+            <DialogDescription>Select a new due date for the maintenance task.</DialogDescription>
+          </DialogHeader>
+
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="dueDate">New Due Date</Label>
+              <Input
+                id="dueDate"
+                type="date"
+                value={newDueDate}
+                onChange={(e) => setNewDueDate(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsRescheduleModalOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleRescheduleMaintenance} disabled={isSubmitting}>
+              {isSubmitting ? 'Saving...' : 'Reschedule'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
