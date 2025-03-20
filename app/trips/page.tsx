@@ -2,15 +2,10 @@
 
 import dynamic from 'next/dynamic'
 
-const DynamicComponentWithNoSSR = dynamic(
-  () => import('./trips-main'),
-  { ssr: false }
-)
+const DynamicComponentWithNoSSR = dynamic(() => import('./trips-main'), { ssr: false })
 
 const MainTripsPage = () => {
-  return ( 
-    <DynamicComponentWithNoSSR />
-   );
+  return <DynamicComponentWithNoSSR />
 }
- 
-export default MainTripsPage;
+
+export default MainTripsPage

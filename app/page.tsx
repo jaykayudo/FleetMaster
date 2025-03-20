@@ -2,15 +2,10 @@
 
 import dynamic from 'next/dynamic'
 
-const DynamicComponentWithNoSSR = dynamic(
-  () => import('./dashboard'),
-  { ssr: false }
-)
+const DynamicComponentWithNoSSR = dynamic(() => import('./dashboard'), { ssr: false })
 
 const MainDashboardPage = () => {
-  return ( 
-    <DynamicComponentWithNoSSR />
-   );
+  return <DynamicComponentWithNoSSR />
 }
- 
-export default MainDashboardPage;
+
+export default MainDashboardPage

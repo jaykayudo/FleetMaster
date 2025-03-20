@@ -27,7 +27,16 @@ import {
 import { Progress } from '@/components/ui/progress'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Trip, Maintenance, Vehicle, useVehicles, useAllMaintenance, useAllTrips } from '@/lib/db'
+import {
+  Trip,
+  Maintenance,
+  Vehicle,
+  useVehicles,
+  useAllMaintenance,
+  useAllTrips,
+  useDatabase,
+  seedSampleData,
+} from '@/lib/db'
 // Helper functions
 function getMaintenanceStatus(maintenance: Maintenance): 'overdue' | 'due-soon' | 'upcoming' {
   const today = new Date()
@@ -66,7 +75,7 @@ function getTripStatus(trip: Trip): 'today' | 'upcoming' | 'past' {
 }
 
 export default function Dashboard() {
-  const { database, useLiveQuery } = useFireproof('fleet-management')
+  const { database } = useDatabase()
   const vehicles = useVehicles()
   const maintenance = useAllMaintenance()
   const trips = useAllTrips()
@@ -77,7 +86,17 @@ export default function Dashboard() {
     maintenanceDue: 0,
     fleetUtilization: 0,
   })
-
+  const [demoLoading, setDemoLoading] = useState(false)
+  const handleCreateDemoData = async () => {
+    setDemoLoading(true)
+    try {
+      await seedSampleData(database)
+    } catch (e) {
+      console.log('error occurred while adding seed data:', e)
+    } finally {
+      setDemoLoading(false)
+    }
+  }
   useEffect(() => {
     if (vehicles && maintenance && trips) {
       // Calculate dashboard stats
@@ -142,6 +161,9 @@ export default function Dashboard() {
               <span className="hidden sm:inline-block">Add Vehicle</span>
             </Button>
           </Link>
+          <Button variant="outline" size="sm" className="h-8 gap-1" onClick={handleCreateDemoData}>
+            <span className="sm:inline-block">{demoLoading ? 'Generating...' : 'Demo Data'}</span>
+          </Button>
         </div>
       </header>
       <main className="flex-1 p-4 md:p-6">

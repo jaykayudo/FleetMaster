@@ -2,15 +2,10 @@
 
 import dynamic from 'next/dynamic'
 
-const DynamicComponentWithNoSSR = dynamic(
-  () => import('./maintenance-main'),
-  { ssr: false }
-)
+const DynamicComponentWithNoSSR = dynamic(() => import('./maintenance-main'), { ssr: false })
 
 const MainMaintenancePage = () => {
-  return ( 
-    <DynamicComponentWithNoSSR />
-   );
+  return <DynamicComponentWithNoSSR />
 }
- 
-export default MainMaintenancePage;
+
+export default MainMaintenancePage

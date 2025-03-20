@@ -1,6 +1,8 @@
 'use client'
 import { useEffect, useState } from 'react'
 import { useFireproof } from 'use-fireproof'
+import sampleData from './sample-data.json'
+
 // Data types
 export interface Vehicle {
   _id?: string
@@ -130,5 +132,32 @@ export function getTripStatus(trip: Trip): 'today' | 'upcoming' | 'past' {
     return 'upcoming'
   } else {
     return 'past'
+  }
+}
+
+export async function seedSampleData(database) {
+  const vehiclesList = await database.query('type', { key: 'vehicle' })
+  console.log(vehiclesList)
+  const vehiclesCount = vehiclesList.rows.length
+
+  if (vehiclesCount === 0) {
+    const vehicles = sampleData.vehicles
+    for (const vehicle of vehicles) {
+      if (vehicle) {
+        await database.put(vehicle)
+      }
+    }
+    const maintenances = sampleData.maintenance
+    for (const maintenance of maintenances) {
+      if (maintenance) {
+        await database.put(maintenance)
+      }
+    }
+    const trips = sampleData.trips
+    for (const trip of trips) {
+      if (trip) {
+        await database.put(trip)
+      }
+    }
   }
 }

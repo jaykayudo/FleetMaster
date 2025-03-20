@@ -2,15 +2,10 @@
 
 import dynamic from 'next/dynamic'
 
-const DynamicComponentWithNoSSR = dynamic(
-  () => import('./vehicle-main'),
-  { ssr: false }
-)
+const DynamicComponentWithNoSSR = dynamic(() => import('./vehicle-main'), { ssr: false })
 
 const MainVehiclePage = () => {
-  return ( 
-    <DynamicComponentWithNoSSR />
-   );
+  return <DynamicComponentWithNoSSR />
 }
- 
-export default MainVehiclePage;
+
+export default MainVehiclePage
