@@ -20,7 +20,7 @@ import { useToast } from '@/hooks/use-toast'
 import { useFireproof } from 'use-fireproof'
 import { useDatabase } from '@/lib/db'
 
-// Simple version 1 of the add vehicle page
+
 export default function NewVehiclePage() {
   const { database, useLiveQuery } = useDatabase()
   const vehicles = useLiveQuery((doc) => doc.type, { descending: true, key: 'vehicle' }).docs
@@ -132,7 +132,7 @@ export default function NewVehiclePage() {
                 <span className="sr-only">Back</span>
               </Link>
             </Button>
-            <h1 className="text-2xl font-bold">Add New Vehicle (v1)</h1>
+            <h1 className="text-2xl font-bold">Add New Vehicle</h1>
           </div>
           <form onSubmit={handleSubmit} className="mt-6 space-y-6">
             <Card>
